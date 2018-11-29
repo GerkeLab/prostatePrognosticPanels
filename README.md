@@ -4,7 +4,7 @@ Data, code and figures examining gene differences between African American and E
 
 ### Data 
 
-Contains deidentified data for 327 PCa patients and includes: race, CAPRA-S group and NCCN risk group (low, intermediate and high), and 60 gene expression values spanning the 3 panels. All patients are from Moffitt Cancer Center (Tampa,FL) and were treated with radical prostatectomy and bilateral pelvic lymph node disssection. The appropriate Institutional Review Board approval was obtained for the study protocol at Moffitt Cancer Center (IRB protocol 105514). 
+Contains deidentified data for 327 PCa patients and includes: race, CAPRA-S group and NCCN risk group (low, intermediate and high), and 60 gene expression values spanning the 3 panels. All patients are from Moffitt Cancer Center (Tampa,FL) and were treated with radical prostatectomy and bilateral pelvic lymph node disssection. The appropriate Institutional Review Board approval was obtained for the study and data release at Moffitt Cancer Center (IRB protocol 105514). 
 
 ### Code
 
