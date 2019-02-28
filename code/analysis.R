@@ -1,7 +1,8 @@
-###################################################################################################
-# SETTING UP THE ENVIRONEMNT
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 01 - SETTING UP THE ENVIRONEMNT
+#####-----------------------------------------------------------------------------------------#####
 
+# import libraries used 
 library(readr)
 library(corrplot)
 library(boot)
@@ -10,18 +11,21 @@ library(reshape)
 library(here)
 library(ppcor)
 
-###################################################################################################
-# HELPER FUNCTIONS
-###################################################################################################
 
+#####-----------------------------------------------------------------------------------------#####
+# 02 - HELPER FUNCTION(S)
+#####-----------------------------------------------------------------------------------------#####
+
+# function used in calulcating confidence intervals for panel correlations 
+## see section 07.02
 corrFun <- function(data,indices){
   d <- data[indices,] # alows boot to select samples
   return(cor.test(d[,1],d[,2], method = "spearman")$estimate[[1]])
 }
 
-###################################################################################################
-# GENES IN EACH PANEL
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 03 - GENES IN EACH PANEL
+#####-----------------------------------------------------------------------------------------#####
 
 decipher_genes <- c("LASP1","IQGAP3","NFIB","S1PR4","THBS2","ANO7","PCDH7","MYBPC1","EPPK1","TSBP",
                     "PBX1","NUSAP1","ZWILCH","UBE2C","CAMK2N1","RABGAP1","PCAT-32","PCAT-80","TNFRSF19","C6orf10")
@@ -34,20 +38,20 @@ prolaris_genes <- c("FOXM1","CDC20","CDKN3","CDC2","KIF11","KIAA0101","NUSAP1","
 oncotypedx_genes <- c("AZGP1","KLK2","SRD5A2","FAM13C","FLNC","GSN","TPM2","GSTM2","TPX2","BGN",
                       "COL1A1","SFRP4")
 
-###################################################################################################
-# DATA IMPORT
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 04 - DATA IMPORT 
+#####-----------------------------------------------------------------------------------------#####
 
-
+# single file containing clinical + expression data 
 dat <- read_delim(here("data/nano.txt"), "\t", escape_double = FALSE, trim_ws = TRUE)
 dat <- as.data.frame(dat)
 
 dat$CAPRASn <- ifelse(dat$CAPRASgroup=='LOW',0,
                       ifelse(dat$CAPRASgroup=="HIGH",2,1))
 
-###################################################################################################
-# DIFFERNETIAL XPRESSION - EAM VS AAM
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 05 - DIFFERNETIAL XPRESSION - EAM VS AAM
+#####-----------------------------------------------------------------------------------------#####
 
 # calculate p value for mann whitney between races for each gene
 raceMannAll <- apply(dat[,colnames(dat) %in% c(prolaris_genes,oncotypedx_genes,decipher_genes)],
@@ -136,9 +140,9 @@ ggplot(melted_data[melted_data$variable %in% decipher_genes,], aes(x=variable, y
            cex=3.5) + 
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
-###################################################################################################
-# INTER-GENE CORRELATION (SEPERATELY IN EAM AND AAM) AND ICC
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 06 - INTER-GENE CORRELATION (SEPERATELY IN EAM AND AAM) AND ICC
+#####-----------------------------------------------------------------------------------------#####
 
 # Prolaris
 
@@ -249,7 +253,7 @@ ggplot(qdat,aes(x=vectorAlpha, y=vectorBeta))+
   geom_smooth(se=FALSE, colour="purple", method="glm",fullrange=TRUE)+
   labs(x="AAM",y="EAM", title="Prolaris")
 
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
 # Oncotype DX
 
 ## Calculate spearmans correlations rounded to one decimal place
@@ -346,7 +350,7 @@ ggplot(qdat,aes(x=vectorAlpha, y=vectorBeta))+
   geom_smooth(se=FALSE, colour="purple", method="glm",fullrange=TRUE)+
   labs(x="AAM",y="EAM", title="Oncotype")
 
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
 # Decipher
 
 ## Calculate spearmans correlations rounded to one decimal place
@@ -451,13 +455,19 @@ ggplot(qdat,aes(x=vectorAlpha, y=vectorBeta))+
   geom_smooth(se=FALSE, colour="purple", method="glm",fullrange=TRUE)+
   labs(x="AAM",y="EAM", title="Decipher")
 
-###################################################################################################
-# RISK SCORES - EAM VS AAM
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
+# 07 - RISK SCORES - EAM VS AAM
+#####-----------------------------------------------------------------------------------------#####
 # Prolaris
 
 ## calculate risk score
-prolarisScore <- apply(dat[colnames(dat) %in% prolaris_genes],1,function(x) sum(x)) 
+prolarisGenes <- dat[,colnames(dat) %in% prolaris_genes]
+gene_med <- apply(prolarisGenes,2,median)
+prolarisGenes_centered <- prolarisGenes - gene_med
+prolarisGenes_centered <- prolarisGenes_centered^2 # squaring the median centered expression values 
+
+prolarisScore <- apply(prolarisGenes_centered,1,mean)
+prolarisScore <- log2(prolarisScore)
 
 risk_prolaris <- as.data.frame(cbind(id=dat$ID,
                                      score=prolarisScore,
@@ -470,7 +480,7 @@ risk_prolaris$score <- as.numeric(as.character(risk_prolaris$score))
 wilcox.test(risk_prolaris$score~risk_prolaris$Race)
 
 ### Figure 3B 
-ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
+B1 <- ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=0.5, jitter.height=0, dodge.width=.75),
@@ -489,7 +499,7 @@ ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
 ### Figure 3B2 
-ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
+B2 <- ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=0.5, jitter.height=0, dodge.width=.75),
@@ -507,12 +517,20 @@ ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
   labs(x="NCCN",y="Risk Score",title="Prolaris") +
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
 # oncotype dx
 
-oncotypeScore <- dat$BGN + dat$COL1A1 + dat$SFRP4 - dat$FLNC + dat$GSN - dat$GSTM2 - dat$TPM2 -
-  dat$AZGP1 - dat$FAM13C - dat$KLK2 - dat$SRD5A2 + dat$TPX2
+#  lower bound of expression values for TPX2 and SRDA5 were capped at 5 and 5.5 respectively
+dat$TPX2_bounded <- ifelse(dat$TPX2 < 5, 5, dat$TPX2)
+dat$SRD5A2_bounded <- ifelse(dat$SRD5A2 < 5.5, 5.5, dat$SRD5A2)
 
+cellular_organization_module = dat$FLNC + dat$GSN + dat$TPM2 + dat$GSTM2
+stromal_module = dat$BGN + dat$COL1A1 + dat$SFRP4
+androgen_module = dat$FAM13C + dat$KLK2 + dat$SRD5A2_bounded + dat$AZGP1
+proliferation_module = dat$TPX2_bounded
+
+oncotypeScore = 0.735*stromal_module - 0.368*cellular_organization_module -
+  0.352*androgen_module + 0.95*proliferation_module
 risk_oncotype <- as.data.frame(cbind(id=dat$ID,
                                      score=oncotypeScore,
                                      Race=dat$Race,
@@ -523,7 +541,7 @@ risk_oncotype$score <- as.numeric(as.character(risk_oncotype$score))
 wilcox.test(risk_oncotype$score~risk_oncotype$Race)
 
 ## Figure 3C
-ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
+C1 <- ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
@@ -542,7 +560,7 @@ ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
 ## Figure 3C2
-ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
+C2 <- ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
@@ -561,16 +579,28 @@ ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
 
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
 # Decipher
 
-decipherScore <- dat$LASP1 + dat$IQGAP3 + dat$NFIB -
-  dat$S1PR4 + dat$THBS2 - dat$ANO7 - 
-  dat$PCDH7 - dat$MYBPC1 + dat$EPPK1 -
-  dat$C6orf10 + dat$PBX1 + dat$UBE2C + 
-  dat$NUSAP1 + dat$ZWILCH + dat$CAMK2N1 +
-  dat$RABGAP1 - dat$`PCAT-32` - dat$`PCAT-80` - dat$TNFRSF19
+decipherGenes <- dat[,colnames(dat) %in% decipher_genes]
+gene_med <- apply(decipherGenes,2,median)
+decipherGenes_centered <- decipherGenes - gene_med
 
+cluster1 <- hclust(dist(t(decipherGenes)),method="centroid")
+
+over <- c("CAMK2N1","EPPK1","IQGAP3","LASP1","NFIB","NUSAP1","PBX1","S1PR4","THBS2","UBE2C",
+          "ZWILCH")
+
+under <- c("ANO7","C6orf10","MYBPC1","PCDH7","RABGAP1","TNFRSF19")
+
+# average of the log2 normalized values for the 9 over-expressed targets
+c1 <- apply(decipherGenes[,c("CAMK2N1","EPPK1","IQGAP3","LASP1","NFIB","NUSAP1","PBX1",
+                             "S1PR4","THBS2","UBE2C","ZWILCH")],1,mean)
+
+# average of the log2 normalized values for the 9 under-expressed targets
+c2 <- apply(decipherGenes[,c("ANO7","C6orf10","MYBPC1","PCDH7","RABGAP1","TNFRSF19")],1,mean)
+
+decipherScore <- c1-c2
 
 risk_decipher <- as.data.frame(cbind(id=dat$ID,
                                      score=decipherScore,
@@ -582,7 +612,7 @@ risk_decipher$score <- as.numeric(as.character(risk_decipher$score))
 wilcox.test(risk_decipher$score~risk_decipher$Race)
 
 ### Figure 3D
-ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
+D1 <- ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
@@ -601,7 +631,7 @@ ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
 ### Figure 3D2
-ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
+D2 <- ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
   geom_boxplot(outlier.shape=NA)+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
@@ -619,7 +649,7 @@ ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
   labs(x="NCCN",y="Risk Score",title="Decipher") +
   scale_color_manual(values=c("deepskyblue", "tomato"))
 
-###################################################################################################
+#####-----------------------------------------------------------------------------------------#####
 
 ### Figure 3A
 
@@ -627,7 +657,7 @@ tmp <- as.data.frame(cbind(Race=c("AAM","AAM","AAM","EAM","EAM","EAM"),
                            capra=c("LOW","INTERMEDIATE","HIGH","LOW","INTERMEDIATE","HIGH"),
                            perc=c(65,29,5,60,30,10)))
 
-ggplot(tmp, aes(fill=Race, x=capra)) +
+A1 <- ggplot(tmp, aes(fill=Race, x=capra)) +
   geom_col(aes(y=as.numeric(as.character(perc))),position = "dodge") + 
   scale_x_discrete(limits = c("LOW","INTERMEDIATE","HIGH")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
@@ -637,7 +667,7 @@ ggplot(tmp, aes(fill=Race, x=capra)) +
         panel.background = element_blank(), 
         axis.line = element_line(colour = "black"), 
         plot.title = element_text(hjust = 0.5, size=20, face="bold"),
-        text = element_text(family="Calibri"),
+        # text = element_text(family="Calibri"),
         axis.title = element_text(face="bold", size=15)) +
   labs(x="CAPRA-S",y="%") +
   guides(fill=guide_legend(title="Race")) +
@@ -649,7 +679,7 @@ tmp <- as.data.frame(cbind(Race=c("AAM","AAM","AAM","EAM","EAM","EAM"),
                            nccn=c("Low","Intermediate","High","Low","Intermediate","High"),
                            perc=c(4,77,19,9,54,37)))
 
-ggplot(tmp, aes(fill=Race, x=nccn)) +
+A2 <- ggplot(tmp, aes(fill=Race, x=nccn)) +
   geom_col(aes(y=as.numeric(as.character(perc))),position = "dodge") + 
   scale_x_discrete(limits = c("Low","Intermediate","High")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
@@ -659,14 +689,22 @@ ggplot(tmp, aes(fill=Race, x=nccn)) +
         panel.background = element_blank(), 
         axis.line = element_line(colour = "black"), 
         plot.title = element_text(hjust = 0.5, size=20, face="bold"),
-        text = element_text(family="Calibri"),
+        # text = element_text(family="Calibri"),
         axis.title = element_text(face="bold", size=15)) +
   labs(x="NCCN",y="%") +
   guides(fill=guide_legend(title="Race")) +
   scale_fill_manual(values=c("deepskyblue", "tomato"))
 
-###################################################################################################
-# risk score correlations
+# pdf("/Volumes/Lab_Gerke/prostateWorkGroup/teamScienceGenes/Panelpaper/figures/riskScoresNCCN.pdf",
+#     width = 8, height = 11)
+gridExtra::grid.arrange(A1,A2,B1,B2,C1,C2,D1,C2, ncol=2)
+# dev.off()
+
+rm(A1,A2,B1,B2,C1,C2,D1,D2)
+
+#####-----------------------------------------------------------------------------------------#####
+# 07.02 - Panel risk score correlations 
+#####-----------------------------------------------------------------------------------------#####
 
 # stratify risk scores by race
 tmpE <- as.data.frame(cbind(decipher=risk_decipher[risk_decipher$Race=="EAM",]$score,
@@ -682,17 +720,17 @@ cor.test(tmpE$decipher,tmpE$prolaris, method = "spearman")
 cor.test(tmpA$decipher,tmpA$prolaris, method = "spearman")
 
 # bootstrap for CI
-boot_results <- boot(data=tmpA[,1:2], statistic=corrFun,R=1000)
-boot.ci(boot_results, type="basic")
 boot_results <- boot(data=tmpE[,1:2], statistic=corrFun,R=1000)
+boot.ci(boot_results, type="basic")
+boot_results <- boot(data=tmpA[,1:2], statistic=corrFun,R=1000)
 boot.ci(boot_results, type="basic")
 
 # Figure 4C
 ggplot(tmpE,aes(x=decipher,y=prolaris))+
   geom_point(colour="tomato",size=3) +
   geom_point(data=tmpA,aes(x=decipher,y=prolaris),colour="deepskyblue",size=3) +
-  annotate("text",label="EAM = -0.15 (-0.27 , -0.03)",x=45,y=110,cex=5) +
-  annotate("text",label="AAM = 0.35 (0.17 , 0.55)",x=45,y=105,cex=5) +
+  annotate("text",label="EAM = 0.30 (0.19 , 0.42)",x=0.8,y=0.2,cex=5) +
+  annotate("text",label="AAM = 0.12 (-0.10 , 0.33)",x=0.8,y=0,cex=5) +
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -705,22 +743,24 @@ ggplot(tmpE,aes(x=decipher,y=prolaris))+
   geom_smooth(data=tmpA,aes(x=decipher,y=prolaris),se=FALSE, colour="deepskyblue", method="glm",fullrange=TRUE)+
   labs(x="Decipher",y="Prolaris")
 
+#####-----------------------------------------------------------------------------------------#####
+
 # decipher vs oncotype
 cor.test(tmpE$decipher,tmpE$oncotype, method = "spearman")
 cor.test(tmpA$decipher,tmpA$oncotype, method = "spearman")
 
 # bootstrap for CI
-boot_results <- boot(data=tmpA[,c(1,3)], statistic=corrFun,R=1000)
-boot.ci(boot_results, type="basic")
 boot_results <- boot(data=tmpE[,c(1,3)], statistic=corrFun,R=1000)
+boot.ci(boot_results, type="basic")
+boot_results <- boot(data=tmpA[,c(1,3)], statistic=corrFun,R=1000)
 boot.ci(boot_results, type="basic")
 
 # Fifure 4B
 ggplot(tmpE,aes(x=decipher,y=oncotype))+
   geom_point(colour="tomato",size=3) +
   geom_point(data=tmpA,aes(x=decipher,y=oncotype),colour="deepskyblue",size=3) +
-  annotate("text",label="EAM = 0.39 (0.29 , 0.52)",x=27,y=-15,cex=5) +
-  annotate("text",label="AAM = 0.49 (0.37 , 0.65)",x=27,y=-17,cex=5) +
+  annotate("text",label="EAM = 0.66 (0.59 , 0.75)",x=0.8,y=-9,cex=5) +
+  annotate("text",label="AAM = 0.61 (0.50 , 0.76)",x=0.8,y=-10,cex=5) +
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -734,21 +774,22 @@ ggplot(tmpE,aes(x=decipher,y=oncotype))+
   labs(x="Decipher",y="Oncotype")
 
 
+#####-----------------------------------------------------------------------------------------#####
 
 # prolaris vs oncotype
 cor.test(tmpE$prolaris,tmpE$oncotype, method = "spearman")
 cor.test(tmpA$prolaris,tmpA$oncotype, method = "spearman")
 
-boot_results <- boot(data=tmpA[,2:3], statistic=corrFun,R=1000)
-boot.ci(boot_results, type="basic")
 boot_results <- boot(data=tmpE[,2:3], statistic=corrFun,R=1000)
+boot.ci(boot_results, type="basic")
+boot_results <- boot(data=tmpA[,2:3], statistic=corrFun,R=1000)
 boot.ci(boot_results, type="basic")
 
 ggplot(tmpE,aes(x=prolaris,y=oncotype))+
   geom_point(colour="tomato",size=3) +
   geom_point(data=tmpA,aes(x=prolaris,y=oncotype),colour="deepskyblue",size=3) +
-  annotate("text",label="EAM = 0.54 (0.45 , 0.64)",x=119,y=-15,cex=5) +
-  annotate("text",label="AAM = 0.63 (0.52 , 0.78)",x=119,y=-17,cex=5) +
+  annotate("text",label="EAM = 0.26 (0.14 , 0.38)",x=0.2,y=2,cex=5) +
+  annotate("text",label="AAM = 0.17 (-0.02 , 0.37)",x=0.2,y=1,cex=5) +
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -760,3 +801,58 @@ ggplot(tmpE,aes(x=prolaris,y=oncotype))+
   geom_smooth(se=FALSE, colour="tomato", method="glm",fullrange=TRUE)+
   geom_smooth(data=tmpA,aes(x=prolaris,y=oncotype),se=FALSE, colour="deepskyblue", method="glm",fullrange=TRUE)+
   labs(x="Prolaris",y="Oncotype")
+
+#####-----------------------------------------------------------------------------------------#####
+# 07.03 - Risk scores and clinical features
+#####-----------------------------------------------------------------------------------------#####
+
+risk_decipher <- data.frame(id=dat$ID,
+                            score=decipherScore,
+                            Race=dat$Race,
+                            capra=dat$CAPRASn,
+                            nccn=dat$nccn)
+risk_decipher <- risk_decipher %>%
+  mutate(score = as.numeric(as.character(score))) %>%
+  mutate(nccn = as.numeric(factor(nccn, levels = rev(levels(nccn)))))
+
+cor.test(risk_decipher$score, risk_decipher$capra)
+cor.test(risk_decipher[risk_decipher$Race=="EAM",]$score, risk_decipher[risk_decipher$Race=="EAM",]$capra) 
+cor.test(risk_decipher[risk_decipher$Race=="AAM",]$score, risk_decipher[risk_decipher$Race=="AAM",]$capra) 
+
+cor.test(risk_decipher$score, risk_decipher$nccn)
+cor.test(risk_decipher[risk_decipher$Race=="EAM",]$score, risk_decipher[risk_decipher$Race=="EAM",]$nccn) 
+cor.test(risk_decipher[risk_decipher$Race=="AAM",]$score, risk_decipher[risk_decipher$Race=="AAM",]$nccn)
+
+risk_prolaris <- data.frame(id=dat$ID,
+                            score=prolarisScore,
+                            Race=dat$Race,
+                            capra=dat$CAPRASn,
+                            nccn=dat$nccn)
+risk_prolaris <- risk_prolaris %>%
+  mutate(score = as.numeric(as.character(score))) %>%
+  mutate(nccn = as.numeric(factor(nccn, levels = rev(levels(nccn)))))
+
+cor.test(risk_prolaris$score, risk_prolaris$capra)
+cor.test(risk_prolaris[risk_prolaris$Race=="EAM",]$score, risk_prolaris[risk_prolaris$Race=="EAM",]$capra) 
+cor.test(risk_prolaris[risk_prolaris$Race=="AAM",]$score, risk_prolaris[risk_prolaris$Race=="AAM",]$capra) 
+
+cor.test(risk_prolaris$score, risk_prolaris$nccn)
+cor.test(risk_prolaris[risk_prolaris$Race=="EAM",]$score, risk_prolaris[risk_prolaris$Race=="EAM",]$nccn) 
+cor.test(risk_prolaris[risk_prolaris$Race=="AAM",]$score, risk_prolaris[risk_prolaris$Race=="AAM",]$nccn)
+
+risk_oncotype <- data.frame(id=dat$ID,
+                            score=oncotypeScore,
+                            Race=dat$Race,
+                            capra=dat$CAPRASn,
+                            nccn=dat$nccn)
+risk_oncotype <- risk_oncotype %>%
+  mutate(score = as.numeric(as.character(score))) %>%
+  mutate(nccn = as.numeric(factor(nccn, levels = rev(levels(nccn)))))
+
+cor.test(risk_oncotype$score, risk_oncotype$capra)
+cor.test(risk_oncotype[risk_oncotype$Race=="EAM",]$score, risk_oncotype[risk_oncotype$Race=="EAM",]$capra) 
+cor.test(risk_oncotype[risk_oncotype$Race=="AAM",]$score, risk_oncotype[risk_oncotype$Race=="AAM",]$capra) 
+
+cor.test(risk_oncotype$score, risk_oncotype$nccn)
+cor.test(risk_oncotype[risk_oncotype$Race=="EAM",]$score, risk_oncotype[risk_oncotype$Race=="EAM",]$nccn)
+cor.test(risk_oncotype[risk_oncotype$Race=="AAM",]$score, risk_oncotype[risk_oncotype$Race=="AAM",]$nccn) 
