@@ -56,7 +56,7 @@ dat$CAPRASn <- ifelse(dat$CAPRASgroup=='LOW',0,
 # calculate p value for mann whitney between races for each gene
 raceMannAll <- apply(dat[,colnames(dat) %in% c(prolaris_genes,oncotypedx_genes,decipher_genes)],
                      2,function(x) wilcox.test(x~dat$Race)$p.value) 
-raceMannAll <- as.data.frame(cbind(gene=colnames(dat)[2:61],
+raceMannAll <- as.data.frame(cbind(gene=colnames(dat[,colnames(dat) %in% c(prolaris_genes,oncotypedx_genes,decipher_genes)]),
                                    raceMannAll))
 raceMannAll$raceMannAll <- as.numeric(as.character(raceMannAll$raceMannAll))
 
@@ -75,7 +75,7 @@ for(i in 1:length(raceMannAll$gene)){
 raceMannAll$fold <- round(log(raceMannAll$fold,2),2)
 raceMannAll <- raceMannAll[!is.na(raceMannAll$label),]
 
-melted_data <- dat[,1:62]
+melted_data <- dat[,c(1:2,5:64)]
 melted_data <- melt(melted_data, id.vars = c("ID","Race"))
 
 ### Figure 1A
@@ -84,7 +84,7 @@ ggplot(melted_data[melted_data$variable %in% prolaris_genes,], aes(x=variable, y
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA,alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "black", size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "darkgreen", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -104,7 +104,11 @@ ggplot(melted_data[melted_data$variable %in% oncotypedx_genes,], aes(x=variable,
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA, alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "black", size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", 
+                                   color = c("darkgreen","darkgreen","darkgreen","darkgreen",
+                                             "purple3","purple3","purple3","darkgreen",
+                                             "darkgreen","darkgreen","purple3","darkgreen"),
+                                   size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -125,7 +129,13 @@ ggplot(melted_data[melted_data$variable %in% decipher_genes,], aes(x=variable, y
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA, alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "black", size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic",
+                                   color = c("purple3","purple3","darkgreen","darkgreen",
+                                             "darkgreen","darkgreen","purple3","darkgreen",
+                                             "darkgreen","darkgreen","darkgreen","darkgreen",
+                                             "purple3","purple3","darkgreen","darkgreen",
+                                             "purple3","darkgreen","darkgreen"),
+                                   size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -478,6 +488,8 @@ risk_prolaris <- as.data.frame(cbind(id=dat$ID,
 risk_prolaris$score <- as.numeric(as.character(risk_prolaris$score))
 
 wilcox.test(risk_prolaris$score~risk_prolaris$Race)
+summary(glm(score ~ Race + capra, data=risk_prolaris))
+summary(glm(score ~ Race + nccn, data=risk_prolaris))
 
 ### Figure 3B 
 B1 <- ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
@@ -538,7 +550,8 @@ risk_oncotype <- as.data.frame(cbind(id=dat$ID,
                                      nccn=dat$nccn))
 risk_oncotype$score <- as.numeric(as.character(risk_oncotype$score))
 
-wilcox.test(risk_oncotype$score~risk_oncotype$Race)
+summary(glm(score ~ Race + capra, data=risk_oncotype))
+summary(glm(score ~ Race + nccn, data=risk_oncotype))
 
 ## Figure 3C
 C1 <- ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
@@ -610,6 +623,8 @@ risk_decipher <- as.data.frame(cbind(id=dat$ID,
 risk_decipher$score <- as.numeric(as.character(risk_decipher$score))
 
 wilcox.test(risk_decipher$score~risk_decipher$Race)
+summary(glm(score ~ Race + capra, data=risk_decipher))
+summary(glm(score ~ Race + nccn, data=risk_decipher))
 
 ### Figure 3D
 D1 <- ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
@@ -697,7 +712,7 @@ A2 <- ggplot(tmp, aes(fill=Race, x=nccn)) +
 
 # pdf("/Volumes/Lab_Gerke/prostateWorkGroup/teamScienceGenes/Panelpaper/figures/riskScoresNCCN.pdf",
 #     width = 8, height = 11)
-gridExtra::grid.arrange(A1,A2,B1,B2,C1,C2,D1,C2, ncol=2)
+gridExtra::grid.arrange(A1,A2,B1,B2,C1,C2,D1,D2, ncol=2)
 # dev.off()
 
 rm(A1,A2,B1,B2,C1,C2,D1,D2)
