@@ -10,7 +10,7 @@ library(ggplot2)
 library(reshape)
 library(here)
 library(ppcor)
-
+library(viridis)
 
 #####-----------------------------------------------------------------------------------------#####
 # 02 - HELPER FUNCTION(S)
@@ -27,8 +27,9 @@ corrFun <- function(data,indices){
 # 03 - GENES IN EACH PANEL
 #####-----------------------------------------------------------------------------------------#####
 
-decipher_genes <- c("LASP1","IQGAP3","NFIB","S1PR4","THBS2","ANO7","PCDH7","MYBPC1","EPPK1","TSBP",
-                    "PBX1","NUSAP1","ZWILCH","UBE2C","CAMK2N1","RABGAP1","PCAT-32","PCAT-80","TNFRSF19","C6orf10")
+decipher_genes <- c("LASP1","IQGAP3","NFIB","S1PR4","THBS2","ANO7","PCDH7",
+                    "MYBPC1","EPPK1","TSBP", "PBX1","NUSAP1","ZWILCH","UBE2C",
+                    "CAMK2N1","RABGAP1","PCAT-32","PCAT-80","TNFRSF19","C6orf10")
 
 prolaris_genes <- c("FOXM1","CDC20","CDKN3","CDC2","KIF11","KIAA0101","NUSAP1","CENPF","ASPM",
                     "BUB1B","RRM2","DLGAP5","BIRC5","KIF20A","PLK1","TOP2A","TK1","PBK","ASF1B",
@@ -59,6 +60,7 @@ raceMannAll <- apply(dat[,colnames(dat) %in% c(prolaris_genes,oncotypedx_genes,d
 raceMannAll <- as.data.frame(cbind(gene=colnames(dat[,colnames(dat) %in% c(prolaris_genes,oncotypedx_genes,decipher_genes)]),
                                    raceMannAll))
 raceMannAll$raceMannAll <- as.numeric(as.character(raceMannAll$raceMannAll))
+raceMannAll$gene <- as.character(raceMannAll$gene)
 
 # annoate labels
 raceMannAll$label <- ifelse(raceMannAll$raceMannAll<=0.001,"***",
@@ -72,10 +74,10 @@ for(i in 1:length(raceMannAll$gene)){
   raceMannAll$fold[i] <- round((median(dat[dat$Race=="EAM",as.character(raceMannAll$gene[i])])/median(dat[dat$Race=="AAM",as.character(raceMannAll$gene[i])])),2)
 }
 
-raceMannAll$fold <- round(log(raceMannAll$fold,2),2)
+# raceMannAll$fold <- round(log(raceMannAll$fold,2),2)
 raceMannAll <- raceMannAll[!is.na(raceMannAll$label),]
 
-melted_data <- dat[,c(1:2,5:64)]
+melted_data <- dat[,colnames(dat) %in% c("ID","Race",prolaris_genes,oncotypedx_genes,decipher_genes)]
 melted_data <- melt(melted_data, id.vars = c("ID","Race"))
 
 ### Figure 1A
@@ -84,7 +86,7 @@ ggplot(melted_data[melted_data$variable %in% prolaris_genes,], aes(x=variable, y
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA,alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "darkgreen", size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -96,19 +98,19 @@ ggplot(melted_data[melted_data$variable %in% prolaris_genes,], aes(x=variable, y
   labs(x="Gene",y="Expression",title="Prolaris") +
   annotate("text",label=raceMannAll[raceMannAll$gene %in% prolaris_genes,]$label,x=raceMannAll[raceMannAll$gene %in% prolaris_genes,]$gene,y=9.5) + 
   annotate("text",label=raceMannAll[raceMannAll$gene %in% prolaris_genes,]$fold,x=raceMannAll[raceMannAll$gene %in% prolaris_genes,]$gene,y=0, cex=3.5) + 
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  scale_color_viridis_d()
 
 ### Figure 1B
-ggplot(melted_data[melted_data$variable %in% oncotypedx_genes,], aes(x=variable, y=value, fill=as.factor(Race)))+
+ggplot(melted_data[melted_data$variable %in% oncotypedx_genes,],
+       aes(x=variable, y=value, fill=as.factor(Race)))+
   scale_fill_manual(values=rep("white",length(oncotypedx_genes)))+
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA, alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic", 
-                                   color = c("darkgreen","darkgreen","darkgreen","darkgreen",
-                                             "purple3","purple3","purple3","darkgreen",
-                                             "darkgreen","darkgreen","purple3","darkgreen"),
-                                   size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, 
+                                   face = c(rep("italic",4),rep("bold",3),
+                                            rep("italic",3), "bold", "italic"),
+                                   color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -121,21 +123,21 @@ ggplot(melted_data[melted_data$variable %in% oncotypedx_genes,], aes(x=variable,
   labs(x="Gene",y="Expression",title="Oncotype DX") +
   annotate("text",label=raceMannAll[raceMannAll$gene %in% oncotypedx_genes,]$label,x=raceMannAll[raceMannAll$gene %in% oncotypedx_genes,]$gene,y=17) +
   annotate("text",label=raceMannAll[raceMannAll$gene %in% oncotypedx_genes,]$fold,x=raceMannAll[raceMannAll$gene %in% oncotypedx_genes,]$gene,y=0, cex=3.5) + 
-  scale_color_manual(values=c("deepskyblue", "tomato"), labels=c("AAM","EAM"))
+  scale_color_viridis_d(labels=c("AAM","EAM"))
 
 ### Figure 1C
-ggplot(melted_data[melted_data$variable %in% decipher_genes,], aes(x=variable, y=value, fill=as.factor(Race)))+
+ggplot(melted_data[melted_data$variable %in% decipher_genes,],
+       aes(x=variable, y=value, fill=as.factor(Race)))+
   scale_fill_manual(values=rep("white",length(decipher_genes)))+
   geom_jitter(position=position_jitterdodge(jitter.width=.15, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.25)+
   geom_boxplot(outlier.shape=NA, alpha=0)+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, face = "italic",
-                                   color = c("purple3","purple3","darkgreen","darkgreen",
-                                             "darkgreen","darkgreen","purple3","darkgreen",
-                                             "darkgreen","darkgreen","darkgreen","darkgreen",
-                                             "purple3","purple3","darkgreen","darkgreen",
-                                             "purple3","darkgreen","darkgreen"),
-                                   size=10),
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,
+                                   face = c(rep("bold",2), rep("italic",4),
+                                            "bold", rep("italic",5),
+                                            rep("bold",2), rep("italic",2),
+                                            "bold", rep("italic",2)),
+                                   color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(), 
@@ -148,7 +150,7 @@ ggplot(melted_data[melted_data$variable %in% decipher_genes,], aes(x=variable, y
   annotate("text",label=raceMannAll[raceMannAll$gene %in% decipher_genes,]$label,x=raceMannAll[raceMannAll$gene %in% decipher_genes,]$gene,y=15) + 
   annotate("text",label=raceMannAll[raceMannAll$gene %in% decipher_genes,]$fold,x=raceMannAll[raceMannAll$gene %in% decipher_genes,]$gene,y=0, 
            cex=3.5) + 
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  scale_color_viridis_d()
 
 #####-----------------------------------------------------------------------------------------#####
 # 06 - INTER-GENE CORRELATION (SEPERATELY IN EAM AND AAM) AND ICC
@@ -169,7 +171,8 @@ corrplot(corrEAM[c("KIAA0101","RAD54L","SKA1","CDCA3","CENPM","RRM2","KIF11","PT
                    "FOXM1","TK1","ASF1B","MCM10","PBK","ASPM","CDC20","BUB1B","NUSAP1","CEP55",
                    "BIRC5","CENPF","PLK1","PRC1","RAD51","ORC6","DTL","DLGAP5","CDK1",
                    "CDKN3","TOP2A")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         # cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.3, tl.col = "black",cl.cex=0.9, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans",cl.pos="n", font=3)
 
@@ -182,7 +185,7 @@ corrplot(corrAAM[c("KIAA0101","RAD54L","SKA1","CDCA3","CENPM","RRM2","KIF11","PT
                    "FOXM1","TK1","ASF1B","MCM10","PBK","ASPM","CDC20","BUB1B","NUSAP1","CEP55",
                    "BIRC5","CENPF","PLK1","PRC1","RAD51","ORC6","DTL","DLGAP5","CDK1",
                    "CDKN3","TOP2A")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.3, tl.col = "black",cl.cex=0.9, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans",cl.pos="n", font=3)
 
@@ -273,14 +276,14 @@ corrEAM <- round(cor(dat[dat$Race=="EAM",colnames(dat) %in% oncotypedx_genes],me
 ### Figure 2B1
 corrplot(corrEAM[c("TPX2","SFRP4","BGN","COL1A1","AZGP1","FAM13C","KLK2","SRD5A2","GSN","GSTM2","FLNC","TPM2"),
                  c("TPX2","SFRP4","BGN","COL1A1","AZGP1","FAM13C","KLK2","SRD5A2","GSN","GSTM2","FLNC","TPM2")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.5, tl.col = "black",cl.cex=0.6, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans", font=3)
 
 ### Figure 2B2
 corrplot(corrAAM[c("TPX2","SFRP4","BGN","COL1A1","AZGP1","FAM13C","KLK2","SRD5A2","GSN","GSTM2","FLNC","TPM2"),
                  c("TPX2","SFRP4","BGN","COL1A1","AZGP1","FAM13C","KLK2","SRD5A2","GSN","GSTM2","FLNC","TPM2")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.5, tl.col = "black",cl.cex=0.6, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans", font=3)
 
@@ -374,7 +377,7 @@ corrplot(corrEAM[c("PBX1","PCDH7","EPPK1","CAMK2N1","THBS2","ZWILCH","S1PR4","C6
                  c("PBX1","PCDH7","EPPK1","CAMK2N1","THBS2","ZWILCH","S1PR4","C6orf10","NUSAP1",
                    "UBE2C","IQGAP3","PCAT-32","PCAT-80","TNFRSF19","ANO7","LASP1","RABGAP1",
                    "MYBPC1","NFIB")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.3, tl.col = "black",cl.cex=0.6, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans",cl.pos="n",font=3)
 
@@ -385,7 +388,7 @@ corrplot(corrAAM[c("PBX1","PCDH7","EPPK1","CAMK2N1","THBS2","ZWILCH","S1PR4","C6
                  c("PBX1","PCDH7","EPPK1","CAMK2N1","THBS2","ZWILCH","S1PR4","C6orf10","NUSAP1",
                    "UBE2C","IQGAP3","PCAT-32","PCAT-80","TNFRSF19","ANO7","LASP1","RABGAP1",
                    "MYBPC1","NFIB")],
-         cl.lim = c(-0.5,1), method="color", col= colorRampPalette(c("blue","white", "red"))(20),
+         cl.lim = c(-0.5,1), method="color", col= viridis(20),
          tl.cex=1.3, tl.col = "black",cl.cex=0.6, cl.ratio = 0.1,addgrid.col = "lightgrey",
          family="sans",cl.pos="n",font=3)
 
@@ -483,13 +486,11 @@ risk_prolaris <- as.data.frame(cbind(id=dat$ID,
                                      score=prolarisScore,
                                      Race=dat$Race,
                                      capra=dat$CAPRASgroup,
-                                     nccn=dat$nccn))
+                                     nccn=toupper(dat$nccn)))
 
 risk_prolaris$score <- as.numeric(as.character(risk_prolaris$score))
 
 wilcox.test(risk_prolaris$score~risk_prolaris$Race)
-summary(glm(score ~ Race + capra, data=risk_prolaris))
-summary(glm(score ~ Race + nccn, data=risk_prolaris))
 
 ### Figure 3B 
 B1 <- ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
@@ -508,7 +509,8 @@ B1 <- ggplot(risk_prolaris, aes(x=capra, y=score, fill=Race))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="CAPRA-S",y="Risk Score",title="Prolaris") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.18),x="HIGH",y=0,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 ### Figure 3B2 
 B2 <- ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
@@ -516,7 +518,7 @@ B2 <- ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=0.5, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.7,size=3)+
-  scale_x_discrete(limits = c("Low","Intermediate","High")) + 
+  scale_x_discrete(limits = c("LOW","INTERMEDIATE","HIGH")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -527,7 +529,8 @@ B2 <- ggplot(risk_prolaris, aes(x=nccn, y=score, fill=Race))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="NCCN",y="Risk Score",title="Prolaris") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.24),x="HIGH",y=0,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 #####-----------------------------------------------------------------------------------------#####
 # oncotype dx
@@ -547,11 +550,10 @@ risk_oncotype <- as.data.frame(cbind(id=dat$ID,
                                      score=oncotypeScore,
                                      Race=dat$Race,
                                      capra=dat$CAPRASgroup,
-                                     nccn=dat$nccn))
+                                     nccn=toupper(dat$nccn)))
 risk_oncotype$score <- as.numeric(as.character(risk_oncotype$score))
 
-summary(glm(score ~ Race + capra, data=risk_oncotype))
-summary(glm(score ~ Race + nccn, data=risk_oncotype))
+wilcox.test(risk_oncotype$score~risk_oncotype$Race)
 
 ## Figure 3C
 C1 <- ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
@@ -570,7 +572,8 @@ C1 <- ggplot(risk_oncotype, aes(x=capra, y=score, fill=as.factor(Race)))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="CAPRA-S",y="Risk Score",title="Oncotype DX") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.0009),x="HIGH",y=-10,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 ## Figure 3C2
 C2 <- ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
@@ -578,7 +581,7 @@ C2 <- ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.7,size=3)+
-  scale_x_discrete(limits = c("Low","Intermediate","High")) + 
+  scale_x_discrete(limits = c("LOW","INTERMEDIATE","HIGH")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -589,7 +592,8 @@ C2 <- ggplot(risk_oncotype, aes(x=nccn, y=score, fill=as.factor(Race)))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="NCCN",y="Risk Score",title="Oncotype DX") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.01),x="HIGH",y=-10,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 
 #####-----------------------------------------------------------------------------------------#####
@@ -619,12 +623,10 @@ risk_decipher <- as.data.frame(cbind(id=dat$ID,
                                      score=decipherScore,
                                      Race=dat$Race,
                                      capra=dat$CAPRASgroup,
-                                     nccn=dat$nccn))
+                                     nccn=toupper(dat$nccn)))
 risk_decipher$score <- as.numeric(as.character(risk_decipher$score))
 
 wilcox.test(risk_decipher$score~risk_decipher$Race)
-summary(glm(score ~ Race + capra, data=risk_decipher))
-summary(glm(score ~ Race + nccn, data=risk_decipher))
 
 ### Figure 3D
 D1 <- ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
@@ -643,7 +645,8 @@ D1 <- ggplot(risk_decipher, aes(x=capra, y=score, fill=as.factor(Race)))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="CAPRA-S",y="Risk Score",title="Decipher") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.38),x="HIGH",y=-2.2,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 ### Figure 3D2
 D2 <- ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
@@ -651,7 +654,7 @@ D2 <- ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
   scale_fill_manual(values=rep("white",3))+
   geom_jitter(position=position_jitterdodge(jitter.width=.5, jitter.height=0, dodge.width=.75),
               aes(fill=as.factor(Race), col=as.factor(Race)),alpha=0.7,size=3)+
-  scale_x_discrete(limits = c("Low","Intermediate","High")) + 
+  scale_x_discrete(limits = c("LOW","INTERMEDIATE","HIGH")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -662,7 +665,8 @@ D2 <- ggplot(risk_decipher, aes(x=nccn, y=score, fill=as.factor(Race)))+
         axis.title = element_text(face="bold", size=15)) +
   guides(fill=FALSE, colour=FALSE) +
   labs(x="NCCN",y="Risk Score",title="Decipher") +
-  scale_color_manual(values=c("deepskyblue", "tomato"))
+  annotate("text",label=paste0("p = ",0.30),x="HIGH",y=-2.2,cex=5, family="Calibri") + 
+  scale_color_viridis_d()
 
 #####-----------------------------------------------------------------------------------------#####
 
@@ -686,17 +690,17 @@ A1 <- ggplot(tmp, aes(fill=Race, x=capra)) +
         axis.title = element_text(face="bold", size=15)) +
   labs(x="CAPRA-S",y="%") +
   guides(fill=guide_legend(title="Race")) +
-  scale_fill_manual(values=c("deepskyblue", "tomato"))
+  scale_fill_viridis_d()
 
 ### Figure 3A2
 
 tmp <- as.data.frame(cbind(Race=c("AAM","AAM","AAM","EAM","EAM","EAM"),
-                           nccn=c("Low","Intermediate","High","Low","Intermediate","High"),
+                           nccn=c("LOW","INTERMEDIATE","HIGH","LOW","INTERMEDIATE","HIGH"),
                            perc=c(4,77,19,9,54,37)))
 
 A2 <- ggplot(tmp, aes(fill=Race, x=nccn)) +
   geom_col(aes(y=as.numeric(as.character(perc))),position = "dodge") + 
-  scale_x_discrete(limits = c("Low","Intermediate","High")) + 
+  scale_x_discrete(limits = c("LOW","INTERMEDIATE","HIGH")) + 
   theme(axis.text.x = element_text(color = "black", size=10),
         axis.text.y = element_text(color = "black", size=10),
         panel.grid.major = element_blank(),
@@ -708,7 +712,7 @@ A2 <- ggplot(tmp, aes(fill=Race, x=nccn)) +
         axis.title = element_text(face="bold", size=15)) +
   labs(x="NCCN",y="%") +
   guides(fill=guide_legend(title="Race")) +
-  scale_fill_manual(values=c("deepskyblue", "tomato"))
+  scale_fill_viridis_d()
 
 # pdf("/Volumes/Lab_Gerke/prostateWorkGroup/teamScienceGenes/Panelpaper/figures/riskScoresNCCN.pdf",
 #     width = 8, height = 11)
@@ -836,7 +840,7 @@ cor.test(risk_decipher[risk_decipher$Race=="AAM",]$score, risk_decipher[risk_dec
 
 cor.test(risk_decipher$score, risk_decipher$nccn)
 cor.test(risk_decipher[risk_decipher$Race=="EAM",]$score, risk_decipher[risk_decipher$Race=="EAM",]$nccn) 
-cor.test(risk_decipher[risk_decipher$Race=="AAM",]$score, risk_decipher[risk_decipher$Race=="AAM",]$nccn)
+cor.test(risk_decipher[risk_decipher$Race=="AAM",]$score, risk_decipher[risk_decipher$Race=="AAM",]$nccn) 
 
 risk_prolaris <- data.frame(id=dat$ID,
                             score=prolarisScore,
@@ -853,7 +857,7 @@ cor.test(risk_prolaris[risk_prolaris$Race=="AAM",]$score, risk_prolaris[risk_pro
 
 cor.test(risk_prolaris$score, risk_prolaris$nccn)
 cor.test(risk_prolaris[risk_prolaris$Race=="EAM",]$score, risk_prolaris[risk_prolaris$Race=="EAM",]$nccn) 
-cor.test(risk_prolaris[risk_prolaris$Race=="AAM",]$score, risk_prolaris[risk_prolaris$Race=="AAM",]$nccn)
+cor.test(risk_prolaris[risk_prolaris$Race=="AAM",]$score, risk_prolaris[risk_prolaris$Race=="AAM",]$nccn) 
 
 risk_oncotype <- data.frame(id=dat$ID,
                             score=oncotypeScore,
@@ -869,5 +873,5 @@ cor.test(risk_oncotype[risk_oncotype$Race=="EAM",]$score, risk_oncotype[risk_onc
 cor.test(risk_oncotype[risk_oncotype$Race=="AAM",]$score, risk_oncotype[risk_oncotype$Race=="AAM",]$capra) 
 
 cor.test(risk_oncotype$score, risk_oncotype$nccn)
-cor.test(risk_oncotype[risk_oncotype$Race=="EAM",]$score, risk_oncotype[risk_oncotype$Race=="EAM",]$nccn)
+cor.test(risk_oncotype[risk_oncotype$Race=="EAM",]$score, risk_oncotype[risk_oncotype$Race=="EAM",]$nccn) 
 cor.test(risk_oncotype[risk_oncotype$Race=="AAM",]$score, risk_oncotype[risk_oncotype$Race=="AAM",]$nccn) 
